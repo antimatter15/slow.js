@@ -26,6 +26,13 @@ function(){
 
 var BREAK = {}; //this will be used to check if you're breaking
 
+slow = {
+  sleep: function(duration){
+    setTimeout(Next, duration);
+  }
+
+}
+
 function _for(loop_test, counting_expr, loop_body){
   _while(loop_test, function(){
     counting_expr();
