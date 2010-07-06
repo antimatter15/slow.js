@@ -35,9 +35,13 @@ LibSlow.prototype._while = function(loop_test, loop_body){
 }
 
 LibSlow.prototype._for = function(loop_test, counting_expr, loop_body){
+  var that = this;
   this._while(loop_test, function(){
     loop_body();
-    counting_expr();
+    that.Queue(function(){
+      counting_expr();
+      that.Next();
+    })
   });
 }
 

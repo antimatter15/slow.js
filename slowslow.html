@@ -1,0 +1,163 @@
+<script>
+function LibSlow(){
+  this.NextQueue = [];
+  this.Returns = [];
+  this.BREAK = {};
+}
+
+LibSlow.prototype.Next = function(){
+  this.Returns.push(this.Skip()());
+  if(this.NextQueue.length == 0){
+    console.log(this.Returns.slice(-1)[0])
+  }
+}
+
+LibSlow.prototype.Skip = function(){
+  return this.NextQueue.pop();
+}
+
+LibSlow.prototype.Queue = function(fn){
+  this.NextQueue.push(fn);
+}
+
+LibSlow.prototype._while = function(loop_test, loop_body){
+  var that = this;
+  setTimeout(function(){
+    that.Queue(function(){
+      if(loop_test()){
+        that.Queue(arguments.callee)
+        var _return = loop_body();
+        if(_return == that.BREAK) that.Skip();
+        
+      }
+      setTimeout(function(){
+        that.Next()
+      }, 0);
+    });
+    that.Next();
+  },0);
+}
+
+LibSlow.prototype._for = function(loop_test, counting_expr, loop_body){
+  var that = this;
+  this._while(loop_test, function(){
+    loop_body();
+    that.Queue(function(){
+      counting_expr();
+      that.Next();
+    })
+  });
+}
+
+
+var longstr = (new Array(10000))
+.join('adskljfasdlkfjasdlkfjasdklfjasdf')
+.split('')
+.map(function(a){return a+Math.random().toString(36)}).join('');
+setTimeout(function(){
+  console.log('starting');
+  sha1Hash(longstr);
+},1000);
+
+LibSlow.prototype.sleep = function(duration){
+  var that = this;
+  setTimeout(function(){that.Next()}, duration);
+}
+
+LibSlow.prototype.download = function(url){
+  var xhrobj = new XMLHttpRequest();
+  xhrobj.open('get',url,true);
+  xhrobj.onreadystatechange = function(){
+    if(xhrobj.readyState == 4) Next();
+  }
+  xhrobj.send(null);
+}
+
+
+function sha1Hash(msg)
+{var __slow=new LibSlow();
+    var K = [0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xca62c1d6];
+
+    msg += String.fromCharCode(0x80); 
+
+    var l = msg.length/4 + 2;  
+    var N = Math.ceil(l/16);  
+    var M = new Array(N);
+    var i=0;
+    __slow._for(function(){return ( i<N)}, function(){ i++}, function(){
+        M[i] = new Array(16);
+        var j=0;__slow._for (function(){return ( j<16)}, function(){ j++}, function(){ 
+            M[i][j] = (msg.charCodeAt(i*64+j*4)<<24) | (msg.charCodeAt(i*64+j*4+1)<<16) | 
+                      (msg.charCodeAt(i*64+j*4+2)<<8) | (msg.charCodeAt(i*64+j*4+3));
+        });__slow.Queue(function(){
+    })});__slow.Queue(function(){
+    M[N-1][14] = ((msg.length-1)*8) / Math.pow(2, 32); M[N-1][14] = Math.floor(M[N-1][14])
+    M[N-1][15] = ((msg.length-1)*8) & 0xffffffff;
+
+    var H0 = 0x67452301;
+    var H1 = 0xefcdab89;
+    var H2 = 0x98badcfe;
+    var H3 = 0x10325476;
+    var H4 = 0xc3d2e1f0;
+    console.log('done with part one');
+
+    var W = new Array(80); var a, b, c, d, e;
+    var i=0;__slow._for (function(){return ( i<N)}, function(){ i++}, function(){
+
+        var t=0;__slow._for (function(){return (  t<16)}, function(){ t++}, function(){ W[t] = M[i][t]});__slow.Queue(function(){;
+        var t=16;__slow._for (function(){return ( t<80)}, function(){ t++}, function(){ W[t] = ROTL(W[t-3] ^ W[t-8] ^ W[t-14] ^ W[t-16], 1)});__slow.Queue(function(){;
+
+        a = H0; b = H1; c = H2; d = H3; e = H4;
+
+        var t=0;__slow._for (function(){return ( t<80)}, function(){ t++}, function(){
+            var s = Math.floor(t/20); 
+            var T = (ROTL(a,5) + f(s,b,c,d) + e + K[s] + W[t]) & 0xffffffff;
+            e = d;
+            d = c;
+            c = ROTL(b, 30);
+            b = a;
+            a = T;
+        });__slow.Queue(function(){
+
+        H0 = (H0+a) & 0xffffffff;  
+        H1 = (H1+b) & 0xffffffff; 
+        H2 = (H2+c) & 0xffffffff; 
+        H3 = (H3+d) & 0xffffffff; 
+        H4 = (H4+e) & 0xffffffff;
+    })})})});__slow.Queue(function(){
+
+    return H0.toHexStr() + H1.toHexStr() + H2.toHexStr() + H3.toHexStr() + H4.toHexStr();
+})})}
+
+
+function f(s, x, y, z) 
+{
+    switch (s) {
+    case 0: return (x & y) ^ (~x & z);           // Ch()
+    case 1: return x ^ y ^ z;                    // Parity()
+    case 2: return (x & y) ^ (x & z) ^ (y & z);  // Maj()
+    case 3: return x ^ y ^ z;                    // Parity()
+    }
+}
+
+//
+// rotate left (circular left shift) value x by n positions [§3.2.5]
+//
+function ROTL(x, n)
+{
+    return (x<<n) | (x>>>(32-n));
+}
+
+//
+// extend Number class with a tailored hex-string method 
+//   (note toString(16) is implementation-dependant, and 
+//   in IE returns signed numbers when used on full words)
+//
+Number.prototype.toHexStr = function()
+{
+    var s="", v;
+    for (var i=7; i>=0; i--) { v = (this>>>(i*4)) & 0xf; s += v.toString(16); }
+    return s;
+}
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  */
+</script>
