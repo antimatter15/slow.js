@@ -36,8 +36,8 @@ LibSlow.prototype._while = function(loop_test, loop_body){
 
 LibSlow.prototype._for = function(loop_test, counting_expr, loop_body){
   this._while(loop_test, function(){
-    counting_expr();
     loop_body();
+    counting_expr();
   });
 }
 
