@@ -56,7 +56,11 @@ function LibSlow(){
 }
 
 LibSlow.prototype.Next = function(){
-  this.NextQueue.pop()();
+  this.Skip()();
+}
+
+LibSlow.prototype.Skip = function(){
+  return this.NextQueue.pop();
 }
 
 LibSlow.prototype.Queue = function(fn){
@@ -75,9 +79,8 @@ LibSlow.prototype._while = function(loop_test, loop_body){
       if(loop_test()){
         that.Queue(arguments.callee)
         var _return = loop_body();
-        if(_return == BREAK){
-          //todo: handle breaks
-        }
+        if(_return == BREAK) that.Skip();
+        
       }
       setTimeout(function(){
         that.Next()
@@ -402,7 +405,9 @@ var s = slow(function(){
 
 var s = slow(function(){
   slow.sleep(4200);
+  var ctr = 0;
   while(true){
+    if(ctr++ > 42) break;
     console.log('yay');
   }
 });
