@@ -72,4 +72,8 @@ Neato, there's a sleep function, as expected. What if I want to download somethi
   })
   
   
-Sure, it's not that awesome, but hey, it works. And though there's a slow.download function, it probably doesn't work.
+Sure, it's not that awesome, but hey, it works. And though there's a slow.download function, it probably doesn't work. Because unlike the predecessor of this project, http://code.google.com/p/js-compiler/ (which is horrible for it's own reasons).
+
+What about callbacks? Well, that's what slow.Next is for, but I don't know if it works.
+
+Any advantages? No, it's just thoroughly really bad and hard to debug.
