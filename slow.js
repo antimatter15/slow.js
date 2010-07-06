@@ -122,7 +122,7 @@ function blockModify(arrstr, str, start, end, parentend){
   var Body = str.substring(start + 1, end);
 
   if(Name == 'function'){
-  
+    console.log('lookitsafunction')
   }else{
     arrstr[NameBegin] = '_'+arrstr[NameBegin];
     
@@ -166,6 +166,16 @@ function blockModify(arrstr, str, start, end, parentend){
       arrstr[parentend] += '})';
     }
   }
+  
+  Body.replace(/[^\w]slow\./g, function(a, c){
+      //c = index
+      c += start + 1;
+      console.log('SLEEP', c);
+      for(var l = c+1, e = l+5; l < e; l++){
+        arrstr[l] = '';
+      }
+      arrstr[c+1] = 'SCHLEEP';
+  });
   console.log(Name, Args)
   console.log(Body);
 }
@@ -207,6 +217,11 @@ function blockScan(str){
       //blockModify(str, index, i);
     }
   }
+  if(blockLevels[0]){
+    blockArray(blockLevels[0], i, arrstr, str);
+    console.log('handling block array ',0)
+    blockLevels[0] = [];
+  }
   return arrstr.join('');
 }
 
@@ -242,43 +257,23 @@ function stripComments(str){
   return newstr;
 }
 
-stripComments((function(){
-  //comment filtering test}
-  alert('1')
-  /*hello} this should throw an error*/
-  alert('2')
-  //////////////sdfsadfsadf
-  alert('3') 
-  /////*
-  alert('4') /*asdfasdf*/
-  //*/
-  alert('5') //eadflkasdfkaf
-  //*
-    alert('6')
-  //*/
-  /*
-    alert('asdfasdf')
-  //*/
-}).toString())
+
 
 
 //blockScan('while("(45)(\')"){//hello\nvar a = 42\nwhile(true){\na++\n}\nalert("NEVER")}');
 //blockScan('function(){alert("yay")}')
+/*
 blockScan(stripComments((function(){
-  //comment filtering test}
-  /*hello} this should throw an error*/
   var a = 0;
   while(true){
     a++;
   }
   alert('hell froze over');
 }).toString()))
+*/
 
-
-
+/*
 var s = ('('+blockScan(stripComments((function(){
-  //comment filtering test}
-  /*hello} this should throw an error*/
   for(var z = 0; z < 2; z++){
     console.log(z,'A',z,NextQueue.length);
     for(var a = 0; a < 2; a++){
@@ -290,50 +285,19 @@ var s = ('('+blockScan(stripComments((function(){
   }
 
 }).toString()))+')');
+*/
+
+
+
+
+
+var s = ('('+blockScan(stripComments((function(){
+  //comment filtering test}
+  /*hello} this should throw an error*/
+  slow.sleep(4200);
+  alert('woke up');
+
+}).toString()))+')');
 console.log(s);
-eval(s)();
+//eval(s)();
 
-/*
-(function() {
-  var z = 0;
-
-  _for(z < 2, z++, {
-    console.log(z, "A", z, NextQueue.length);
-    var a = 0;
-    _for(a < 2, a++, {
-      console.log(z, "B", a, NextQueue.length)
-    });
-    QueueNext(function() {
-      var a = 0;
-      _for(a < 2, a++, {
-        console.log(z, "C", a, NextQueue.length)
-      });
-      QueueNext(function() {
-      })
-    })
-  });
-  QueueNext(function() {
-    
-  })
-});
-
-//*/
-(function (){
-  var z = 0;_for(function(){return ( z < 2)}, function(){ z++}, function(){
-    console.log(z,'A',z,NextQueue.length);
-    var a = 0;_for(function(){return ( a < 2)}, function(){ a++}, function(){
-      console.log(z,'B',a,NextQueue.length);
-    });
-    QueueNext(function(){
-      var a = 0;_for(function(){return ( a < 2)}, function(){ a++}, function(){
-        console.log(z,'C',a,NextQueue.length);
-      });
-      QueueNext(function(){
-      })
-    })
-  });
-  QueueNext(function(){
-  })
-})
-
-//*/
