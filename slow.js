@@ -97,8 +97,31 @@ function reverseParen(str, start){
     }
     if(parenStack.length == 0) return start;
   }
-  throw "This should never happen Paren";
+  throw "This should never happen Paren Rev";
 }
+
+function forwardParen(str, start){
+  var parenStack = [];
+  var inDbl = false, inSgl = false;
+  var sl = str.length;
+  while(++start < sl){
+    var chr = str.charAt(start);
+    if(chr == '"' && !inSgl){
+      inDbl = !inDbl;
+    }else if(chr == "'" && !inDbl){
+      inSgl = !inSgl;
+    }else if(inSgl || inDbl){
+      //neener neener
+    }else if(chr == '('){ //close paren = close
+      parenStack.push(start);
+    }else if(chr == ')'){ //open paren = open
+      parenStack.pop();
+    }
+    if(parenStack.length == 0) return start;
+  }
+  throw "This should never happen Paren For";
+}
+
 
 function reverseName(str, start){
   var everything = "";
@@ -122,7 +145,7 @@ function blockModify(arrstr, str, start, end, parentend){
   var Body = str.substring(start + 1, end);
 
   if(Name == 'function'){
-    console.log('lookitsafunction')
+    //console.log('lookitsafunction')
   }else{
     arrstr[NameBegin] = '_'+arrstr[NameBegin];
     
@@ -163,18 +186,20 @@ function blockModify(arrstr, str, start, end, parentend){
       arrstr[mid_arg] = ')}, function(){'
       arrstr[end] += ');QueueNext(function(){'
       arrstr[start - 1] = '}, function()';
-      arrstr[parentend] += '})';
+      arrstr[parentend ] += '})';
     }
   }
   
-  Body.replace(/[^\w]slow\./g, function(a, c){
+  Body.replace(/[^\w](slow\s*\.\s*\w+)/g, function(a, b, c){
       //c = index
       c += start + 1;
-      console.log('SLEEP', c);
-      for(var l = c+1, e = l+5; l < e; l++){
-        arrstr[l] = '';
-      }
-      arrstr[c+1] = 'SCHLEEP';
+      var endParen = forwardParen(str, c+b.length);
+      
+      //arrstr[c+b.length] += '____';
+      arrstr[endParen+1] += ';QueueNext(function(){';
+      arrstr[parentend] = '})' + arrstr[parentend];
+      console.log('Fn Arg', c);
+
   });
   console.log(Name, Args)
   console.log(Body);
