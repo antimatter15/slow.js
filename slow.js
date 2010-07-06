@@ -1,58 +1,6 @@
-/*
-slow(functiono(){
-  var a = 0;
-  while(true){
-    a++;
-  }
-  alert('end of neverland');
-})
-
-
-
-function(){
-  var a = 0;
-  LoopStack.push(function(){
-    alert('end of neverland');
-  });
-  _while(function(){return true},
-         function(){
-    a++;
-  }, function(){
-    //finish
-    Next();
-  });
-}
-
-
-var slow_asdf5s4 = new LibSlow();
-slow_asdf5s4.QueueNext
-slow_asdf5s4.Next
-
-*/
-
-var BREAK = {}; //this will be used to check if you're breaking
-
-/*
-slow.sleep = function(duration){
-    setTimeout(Next, duration);
-  }
-
-slow.download = function(url){
-  var xhrobj = new XMLHttpRequest();
-  xhrobj.open('get',url,true);
-  xhrobj.onreadystatechange = function(){
-    if(xhrobj.readyState == 4) Next();
-  }
-  xhrobj.send(null);
-}*/
-
-
-
-
-
-
 function LibSlow(){
   this.NextQueue = [];
+  this.BREAK = {};
 }
 
 LibSlow.prototype.Next = function(){
@@ -72,6 +20,15 @@ LibSlow.prototype.sleep = function(duration){
   setTimeout(function(){that.Next()}, duration);
 }
 
+LibSlow.prototype.download = function(url){
+  var xhrobj = new XMLHttpRequest();
+  xhrobj.open('get',url,true);
+  xhrobj.onreadystatechange = function(){
+    if(xhrobj.readyState == 4) Next();
+  }
+  xhrobj.send(null);
+}
+
 LibSlow.prototype._while = function(loop_test, loop_body){
   var that = this;
   setTimeout(function(){
@@ -79,7 +36,7 @@ LibSlow.prototype._while = function(loop_test, loop_body){
       if(loop_test()){
         that.Queue(arguments.callee)
         var _return = loop_body();
-        if(_return == BREAK) that.Skip();
+        if(_return == that.BREAK) that.Skip();
         
       }
       setTimeout(function(){
@@ -97,42 +54,6 @@ LibSlow.prototype._for = function(loop_test, counting_expr, loop_body){
   });
 }
 
-
-/*
-function _while(loop_test, loop_body){
-  //todo: error handling
-  setTimeout(function(){
-    if(loop_test()){
-      var reIterate = arguments.callee;
-      QueueNext(function(){
-        setTimeout(reIterate, 0);
-      });
-      var _return = loop_body();
-      if(_return === BREAK){
-        NextQueue.pop();
-        return Next();
-      } //continue does nothing
-      Next();
-    }else Next();
-  },0);
-}
-
-function _while(loop_test, loop_body){
-  setTimeout(function(){
-    QueueNext(function(){
-      if(loop_test()){
-        QueueNext(arguments.callee)
-        var _return = loop_body();
-        if(_return == BREAK){
-          //todo: handle breaks
-        }
-      }
-      setTimeout(Next, 0);
-    });
-    Next();
-  },0);
-}
-*/
 
 function reverseParen(str, start){
   var parenStack = [];
@@ -211,7 +132,7 @@ function blockModify(arrstr, str, start, end, parentend, namespace){
       for(var l = c+1, e = l+5; l < e; l++){
         arrstr[l] = '';
       }
-      arrstr[c+1] = 'return BREAK';
+      arrstr[c+1] = 'return '+namespace+'.BREAK';
     });
     var continues = Body.replace(/[^\w]continue[^\w]/g, function(a, c){
       //c = index
