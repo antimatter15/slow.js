@@ -22,36 +22,78 @@ function(){
     Next();
   });
 }
+
+
+var slow_asdf5s4 = new LibSlow();
+slow_asdf5s4.QueueNext
+slow_asdf5s4.Next
+
 */
 
 var BREAK = {}; //this will be used to check if you're breaking
 
-slow = {
-  sleep: function(duration){
+/*
+slow.sleep = function(duration){
     setTimeout(Next, duration);
   }
 
+slow.download = function(url){
+  var xhrobj = new XMLHttpRequest();
+  xhrobj.open('get',url,true);
+  xhrobj.onreadystatechange = function(){
+    if(xhrobj.readyState == 4) Next();
+  }
+  xhrobj.send(null);
+}*/
+
+
+
+
+
+
+function LibSlow(){
+  this.NextQueue = [];
 }
 
-function _for(loop_test, counting_expr, loop_body){
-  _while(loop_test, function(){
+LibSlow.prototype.Next = function(){
+  this.NextQueue.pop()();
+}
+
+LibSlow.prototype.Queue = function(fn){
+  this.NextQueue.push(fn);
+}
+
+LibSlow.prototype.sleep = function(duration){
+  var that = this;
+  setTimeout(function(){that.Next()}, duration);
+}
+
+LibSlow.prototype._while = function(loop_test, loop_body){
+  var that = this;
+  setTimeout(function(){
+    that.Queue(function(){
+      if(loop_test()){
+        that.Queue(arguments.callee)
+        var _return = loop_body();
+        if(_return == BREAK){
+          //todo: handle breaks
+        }
+      }
+      setTimeout(function(){
+        that.Next()
+      }, 0);
+    });
+    that.Next();
+  },0);
+}
+
+LibSlow.prototype._for = function(loop_test, counting_expr, loop_body){
+  this._while(loop_test, function(){
     counting_expr();
     loop_body();
   });
 }
 
-
-NextQueue = [];
-function Next(){
-
-  //console.log('Popped',NextQueue.length-1);
-  NextQueue.pop()();
-  
-}
-function QueueNext(fn){
-  NextQueue.push(fn)
-  //console.log('Queued',NextQueue.length,fn);
-}
 
 /*
 function _while(loop_test, loop_body){
@@ -71,20 +113,23 @@ function _while(loop_test, loop_body){
     }else Next();
   },0);
 }
-*/
+
 function _while(loop_test, loop_body){
   setTimeout(function(){
     QueueNext(function(){
       if(loop_test()){
         QueueNext(arguments.callee)
-        loop_body()
+        var _return = loop_body();
+        if(_return == BREAK){
+          //todo: handle breaks
+        }
       }
       setTimeout(Next, 0);
     });
     Next();
   },0);
 }
-
+*/
 
 function reverseParen(str, start){
   var parenStack = [];
@@ -144,7 +189,7 @@ function trim(str){
   return str.replace(/^\s+|\s+$/g, '');
 }
 
-function blockModify(arrstr, str, start, end, parentend){
+function blockModify(arrstr, str, start, end, parentend, namespace){
   var ArgEnd = reverseParen(str, start); //in while(blahblahblah){} get to where the while( is
   var NameBegin = reverseName(str, ArgEnd);
   var Name = trim(str.substring(NameBegin, ArgEnd));
@@ -154,7 +199,7 @@ function blockModify(arrstr, str, start, end, parentend){
   if(Name == 'function'){
     //console.log('lookitsafunction')
   }else{
-    arrstr[NameBegin] = '_'+arrstr[NameBegin];
+    arrstr[NameBegin] = namespace+'._'+arrstr[NameBegin];
     
     var breaks = Body.replace(/[^\w]break[^\w]/g, function(a, c){
       //c = index
@@ -179,7 +224,7 @@ function blockModify(arrstr, str, start, end, parentend){
       arrstr[start - 1] += '}, ';
       arrstr[start] = 'function()'+arrstr[start]+' ';
       arrstr[end - 1] += '';
-      arrstr[end] += ');QueueNext(function(){'
+      arrstr[end] += ');'+namespace+'.Queue(function(){'
       arrstr[parentend] += '})';
     }else if(Name == 'for'){
       //this one requires a bit of inner-arg rewriting, warning: its pretty nasty
@@ -191,7 +236,7 @@ function blockModify(arrstr, str, start, end, parentend){
       arrstr[ArgEnd + 1] += 'function(){return ('
       var mid_arg = ArgEnd + arg[0].length+arg[1].length + 1;
       arrstr[mid_arg] = ')}, function(){'
-      arrstr[end] += ');QueueNext(function(){'
+      arrstr[end] += ');'+namespace+'.Queue(function(){'
       arrstr[start - 1] = '}, function()';
       arrstr[parentend ] += '})';
     }
@@ -201,9 +246,12 @@ function blockModify(arrstr, str, start, end, parentend){
       //c = index
       c += start + 1;
       var endParen = forwardParen(str, c+b.length);
-      
+       for(var l = c+1, e = l+4; l < e; l++){
+        arrstr[l] = '';
+      }
+      arrstr[c+1] = namespace;
       //arrstr[c+b.length] += '____';
-      arrstr[endParen+1] += ';QueueNext(function(){';
+      arrstr[endParen+1] += ';'+namespace+'.Queue(function(){';
       arrstr[parentend] = '})' + arrstr[parentend];
       console.log('Fn Arg', c);
 
@@ -212,14 +260,14 @@ function blockModify(arrstr, str, start, end, parentend){
   console.log(Body);
 }
 
-function blockArray(levels, index, arrstr, str){
+function blockArray(levels, index, arrstr, str, namespace){
   for(var q = levels.length, b = 0; b < q; b++){
     var lev = levels[b];
-    blockModify(arrstr, str, lev[0], lev[1], index - 1);
+    blockModify(arrstr, str, lev[0], lev[1], index - 1, namespace);
   }
 }
 
-function blockScan(str){
+function blockScan(str, namespace){
   var blockStack = [];
   var blockLevels = {}; //each is = to blockStack.length
   var inDbl = false, inSgl = false;
@@ -240,17 +288,16 @@ function blockScan(str){
       if(!index) throw "This should never happen";
       var level = blockStack.length;
       if(blockLevels[level+1]){
-        blockArray(blockLevels[level+1], i, arrstr, str);
+        blockArray(blockLevels[level+1], i, arrstr, str, namespace);
         console.log('handling block array ',level)
         blockLevels[level+1] = [];
       }
       if(!blockLevels[level]) blockLevels[level] = [];
       blockLevels[level].push([index, i])
-      //blockModify(str, index, i);
     }
   }
   if(blockLevels[0]){
-    blockArray(blockLevels[0], i, arrstr, str);
+    blockArray(blockLevels[0], i, arrstr, str, namespace);
     console.log('handling block array ',0)
     blockLevels[0] = [];
   }
@@ -320,16 +367,45 @@ var s = ('('+blockScan(stripComments((function(){
 */
 
 
+function createNamespace(){
+  return '__slow'//$'+Math.random().toString(36).substr(5)
+}
 
 
+function insertHeader(str, namespace){
+  var spl = str.split('{')
+  spl[1] = 'var '+namespace+'=new LibSlow();'+spl[1];
+  return spl.join('{')
+}
 
-var s = ('('+blockScan(stripComments((function(){
-  //comment filtering test}
-  /*hello} this should throw an error*/
+
+function slow(input){
+  var str = input.toString();
+  var noComments = stripComments(str);
+  var ns = createNamespace();
+  var firstPass = blockScan(noComments, ns);
+  var secondPass = insertHeader(firstPass, ns);
+  return '('+secondPass+')';
+}
+
+/*
+var s = slow(function(){
   slow.sleep(4200);
-  alert('woke up');
+  console.log('woke up');
+  var xhrobj = new XMLHttpRequest();
+  xhrobj.open('get','/',true);
+  xhrobj.send(null);
+  while(xhrobj.readyState != 4){};
+  console.log(xhrobj.responseText);
+});
+*/
 
-}).toString()))+')');
+var s = slow(function(){
+  slow.sleep(4200);
+  while(true){
+    console.log('yay');
+  }
+});
 console.log(s);
 //eval(s)();
 
