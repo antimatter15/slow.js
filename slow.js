@@ -26,24 +26,56 @@ function(){
 
 var BREAK = {}; //this will be used to check if you're breaking
 
-function _for(loop_test, counting_expr, loop_body, next){
+function _for(loop_test, counting_expr, loop_body){
   _while(loop_test, function(){
     counting_expr();
     loop_body();
-  }, next);
+  });
 }
 
-function _while(loop_test, loop_body, next){
+
+NextQueue = [];
+function Next(){
+
+  //console.log('Popped',NextQueue.length-1);
+  NextQueue.pop()();
+  
+}
+function QueueNext(fn){
+  NextQueue.push(fn)
+  //console.log('Queued',NextQueue.length,fn);
+}
+
+/*
+function _while(loop_test, loop_body){
   //todo: error handling
-  (function(){
+  setTimeout(function(){
     if(loop_test()){
+      var reIterate = arguments.callee;
+      QueueNext(function(){
+        setTimeout(reIterate, 0);
+      });
       var _return = loop_body();
       if(_return === BREAK){
-        return next();
+        NextQueue.pop();
+        return Next();
       } //continue does nothing
-      setTimeout(arguments.callee, 0);
-    }else next();
-  })();
+      Next();
+    }else Next();
+  },0);
+}
+*/
+function _while(loop_test, loop_body){
+  setTimeout(function(){
+    QueueNext(function(){
+      if(loop_test()){
+        QueueNext(arguments.callee)
+        loop_body()
+      }
+      setTimeout(Next, 0);
+    });
+    Next();
+  },0);
 }
 
 
@@ -93,6 +125,7 @@ function blockModify(arrstr, str, start, end, parentend){
   
   }else{
     arrstr[NameBegin] = '_'+arrstr[NameBegin];
+    
     var breaks = Body.replace(/[^\w]break[^\w]/g, function(a, c){
       //c = index
       c += start + 1;
@@ -116,7 +149,7 @@ function blockModify(arrstr, str, start, end, parentend){
       arrstr[start - 1] += '}, ';
       arrstr[start] = 'function()'+arrstr[start]+' ';
       arrstr[end - 1] += '';
-      arrstr[end] += ', function(){'
+      arrstr[end] += ');QueueNext(function(){'
       arrstr[parentend] += '})';
     }else if(Name == 'for'){
       //this one requires a bit of inner-arg rewriting, warning: its pretty nasty
@@ -128,9 +161,9 @@ function blockModify(arrstr, str, start, end, parentend){
       arrstr[ArgEnd + 1] += 'function(){return ('
       var mid_arg = ArgEnd + arg[0].length+arg[1].length + 1;
       arrstr[mid_arg] = ')}, function(){'
-      arrstr[end] += ', function(){'
-      arrstr[parentend] += '})';
+      arrstr[end] += ');QueueNext(function(){'
       arrstr[start - 1] = '}, function()';
+      arrstr[parentend] += '})';
     }
   }
   console.log(Name, Args)
@@ -243,57 +276,64 @@ blockScan(stripComments((function(){
 
 
 
-blockScan(stripComments((function(){
+var s = ('('+blockScan(stripComments((function(){
   //comment filtering test}
   /*hello} this should throw an error*/
-  for(var z = 0; z < 4; z++){
-    for(var a = 0; a < 100; a++){
-      console.log(a);
+  for(var z = 0; z < 2; z++){
+    console.log(z,'A',z,NextQueue.length);
+    for(var a = 0; a < 2; a++){
+      console.log(z,'B',a,NextQueue.length);
     }
-    alert('Counted Two Uh Hundred');
-    
-    var a = 0;
-    
-    while(true){
-      if(a++ > 42) break;
+    for(var a = 0; a < 2; a++){
+      console.log(z,'C',a,NextQueue.length);
     }
-    alert('hell froze over');
-    
   }
-}).toString()))
 
+}).toString()))+')');
+console.log(s);
+eval(s)();
 
+/*
 (function() {
   var z = 0;
-  _for(function() {
-    return z < 4
-  }, function() {
-    z++
-  }, function() {
+
+  _for(z < 2, z++, {
+    console.log(z, "A", z, NextQueue.length);
     var a = 0;
-    _for(function() {
-      return a < 100
-    }, function() {
-      a++
-    }, function() {
-      console.log(a)
-    }, function() {
-      alert("Counted Two Uh Hundred");
+    _for(a < 2, a++, {
+      console.log(z, "B", a, NextQueue.length)
+    });
+    QueueNext(function() {
+      var a = 0;
+      _for(a < 2, a++, {
+        console.log(z, "C", a, NextQueue.length)
+      });
+      QueueNext(function() {
+      })
     })
-  }, function() {
+  });
+  QueueNext(function() {
+    
   })
 });
 
+//*/
+(function (){
+  var z = 0;_for(function(){return ( z < 2)}, function(){ z++}, function(){
+    console.log(z,'A',z,NextQueue.length);
+    var a = 0;_for(function(){return ( a < 2)}, function(){ a++}, function(){
+      console.log(z,'B',a,NextQueue.length);
+    });
+    QueueNext(function(){
+      var a = 0;_for(function(){return ( a < 2)}, function(){ a++}, function(){
+        console.log(z,'C',a,NextQueue.length);
+      });
+      QueueNext(function(){
+      })
+    })
+  });
+  QueueNext(function(){
+  })
+})
 
-for(var z = 0; z < 4; z++){
-  for(var a = 0; a < 100; a++){
-    console.log(a);
-    for(var a = 0; a < 100; a++){
-      console.log(a);
-    }
-    console.log('done')
-  }
-  alert('Counted Two Uh Hundred');
-  Done()
-}
-
+//*/
