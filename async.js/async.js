@@ -1,13 +1,37 @@
+function async(fn){
+  return eval('('+blockScan(fn.toString())+')');
+}
 
-//
+async.download = function(url){
+  return function(callback){
+    var xhr = new XMLHttpRequest();
+    xhr.open('get', url, true);
+    xhr.onreadystatechange = function(){
+      if(xhr.readyState == 4) callback(xhr.responseText);
+    }
+    xhr.send(null);
+  }
+}
+async.require = function(module){
+  return async(function(callback){
+    eval(async.download(module+'.js'))
+    callback()
+  })
+}
+
+
+
+
+
 blockScan((function(){
-var test = {}
+var test = {}   
 var http =async .
   require   (  'http'  ) 
     
-  var net = async.require('net')
+  var     net   =    async.require('net')
 net.createServer()
 }).toString())
+
 
 
 function trim(str){
@@ -15,25 +39,34 @@ function trim(str){
 }
 
 function findLastLine(str, pos){
-  while(pos--){
-    var c = str.substr(pos);
-    if(c.charAt(0) == ';' ||
-      /^[\{\}\)\(\[\]A-Za-z0-9$_]\s*\n\s*[A-Za-z0-9$_]/.test(c)){
-      return pos;
-    }
+  var sl = -1;
+  while(pos-- > sl){
+    var t = lineBreakTest(str, pos);
+    if(t) return t;
   }
-  throw 'crap last';
+  return 0;
+}
+
+function lineBreakTest(str, pos){
+  var c = str.substr(pos);
+  if(c.charAt(0) == ';' ||
+    /^[\{\}\)\(\[\]A-Za-z0-9$_]\s*\n\s*[A-Za-z0-9$_]/.test(c)){
+    return pos  + c.match(/.\s*/)[0].length;
+  }
+  if(/[\{\}]\s*[A-Za-z0-9$_]/.test(c) ||
+    /[A-Za-z0-9$_]\s*[\{\}]/.test(c)){
+    return pos + c.match(/.\s*/)[0].length
+  }
+  return false;
 }
 
 function findNextLine(str, pos){
-  while(pos++){
-    var c = str.substr(pos);
-    if(c.charAt(0) == ';' ||
-      /^[\{\}\)\(\[\]A-Za-z0-9$_]\s*\n\s*[A-Za-z0-9$_]/.test(c)){
-      return pos;
-    }
+  var sl = str.length;
+  while(pos++ < sl){
+    var t = lineBreakTest(str, pos);
+    if(t) return t;
   }
-  throw 'crap next';  
+  return sl-1;
 }
 
 
@@ -62,40 +95,39 @@ function forwardParen(str, start){
 
 
 function blockModify(arrstr, str, start, end, parentend){
-  /*
-  var ArgEnd = reverseParen(str, start); //in while(blahblahblah){} get to where the while( is
-  var NameBegin = reverseName(str, ArgEnd);
-  var Name = trim(str.substring(NameBegin, ArgEnd));
-  var Args = str.substring(ArgEnd, start);
-  */
   var Body = str.substring(start + 1, end);
   
-  Body.replace(/[^\w](async\s*\.\s*\w+)/g, function(a, b, c){
+  Body.replace(/(\s*)(async\s*\.\s*\w+)\s*\(/g, function(a, lws, b, c){
       //c = index
       //arrstr[start+c] += 'moo'
-      var fp = forwardParen(str, start+c+b.length+1);
-      var ep = start+c+1;
+      var fp = forwardParen(str, start+c+b.length+lws.length);
+      var ep = start+c+lws.length;
+      
+      console.log('B='+b);
       
       var rpl = str.substring(ep+1, fp+1);
-      console.log(rpl);
+      console.log('rpl='+rpl);
       
-      var vn = rpl.replace(/[^a-z0-9A-Z]/g,'').substr(5);
-      var lstart = 1+findLastLine(str, start+c)+1;
-      var lend = findNextLine(str, start+c)+1;
+      var varname = b.replace(/[^a-z0-9A-Z]/g,'');
+      
+      var lstart = findLastLine(str, start+c);
+      var lend = findNextLine(str, start+c);
       var body = str.substring(lstart,lend);
       
+      
+      console.log('body='+body);
+      //arrstr[findLastLine(str, start+c)] += 'A';
+      //arrstr[findNextLine(str, start+c)] += 'B';
       for(var q = lstart; q  < lend; q++){
-        //console.log(body)
         arrstr[q] = '';
       }
-      arrstr[fp] += rpl;
-      console.log(rpl);
-      //arrstr[findLastLine(str, start+c)] += 'A';
-      arrstr[findNextLine(str, start+c)] += '(function('+vn+'){'+body.replace(rpl, vn)+'\n';
+      arrstr[findLastLine(str, start+c)] += rpl;
+      console.log(arrstr[findNextLine(str, start+c)] )
+      arrstr[fp] += '(function('+varname+'){'+body.replace(rpl, varname);
+      console.log('parentend', arrstr[parentend]);
       arrstr[parentend] = '})' + arrstr[parentend];
   });
-  //console.log(Name, Args)
-  console.log(Body);
+  //console.log(Body);
 }
 
 function blockArray(levels, index, arrstr, str){
