@@ -12,6 +12,13 @@ async.download = function(url){
     xhr.send(null);
   }
 }
+
+async.sleep = function(duration){
+  return function(callback){
+    setTimeout(function(){callback()}, duration);
+  }
+}
+
 async.require = function(module){
   return async(function(callback){
     eval(async.download(module+'.js'))
