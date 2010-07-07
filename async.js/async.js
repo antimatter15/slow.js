@@ -1,5 +1,7 @@
 function async(fn){
-  return eval('('+blockScan(fn.toString())+')');
+  var mstr = '('+blockScan(fn.toString())+')';
+  console.log(mstr);
+  return eval(mstr);
 }
 
 async.download = function(url){
@@ -19,25 +21,16 @@ async.sleep = function(duration){
   }
 }
 
-async.require = function(module){
-  return async(function(callback){
-    eval(async.download(module+'.js'))
-    callback()
-  })
-}
+async.require = async(function(module){
+  //sorta like Node.JS
+  return function(callback){
+    var prefix = '(function()\x7bvar exports=\x7b\x7d;', postfix = ';return exports\x7d)()';
+    callback(eval(prefix +async.download(module +'.js')+postfix));
+  }       
+})
 
 
 
-
-
-blockScan((function(){
-var test = {}   
-var http =async .
-  require   (  'http'  ) 
-    
-  var     net   =    async.require('net')
-net.createServer()
-}).toString())
 
 
 
@@ -57,7 +50,7 @@ function findLastLine(str, pos){
 function lineBreakTest(str, pos){
   var c = str.substr(pos);
   if(c.charAt(0) == ';' ||
-    /^[\{\}\)\(\[\]A-Za-z0-9$_]\s*\n\s*[A-Za-z0-9$_]/.test(c)){
+    /^[\{\}\)\]A-Za-z0-9$_]\s*\n\s*[A-Za-z0-9$_]/.test(c)){
     return pos  + c.match(/.\s*/)[0].length;
   }
   if(/[\{\}]\s*[A-Za-z0-9$_]/.test(c) ||
@@ -112,6 +105,7 @@ function blockModify(arrstr, str, start, end, parentend){
       
       console.log('B='+b);
       
+      
       var rpl = str.substring(ep+1, fp+1);
       console.log('rpl='+rpl);
       
@@ -131,28 +125,41 @@ function blockModify(arrstr, str, start, end, parentend){
       arrstr[findLastLine(str, start+c)] += rpl;
       console.log(arrstr[findNextLine(str, start+c)] )
       arrstr[fp] += '(function('+varname+'){'+body.replace(rpl, varname);
+      while(/\s/.test(arrstr[parentend])) parentend--;
       console.log('parentend', arrstr[parentend]);
+      
       arrstr[parentend] = '})' + arrstr[parentend];
+      
   });
+  console.log(arrstr.join(''));
+  console.log(str);
   //console.log(Body);
 }
 
-function blockArray(levels, index, arrstr, str){
-  for(var q = levels.length, b = 0; b < q; b++){
-    var lev = levels[b];
-    blockModify(arrstr, str, lev[0], lev[1], index - 1);
-  }
-}
+
 
 
 function blockScan(str){
   var blockStack = [];
   var blockLevels = {}; //each is = to blockStack.length
   var inDbl = false, inSgl = false;
-  arrstr = str.split(''); //it's easier to do insertions without worrying about changing order this way
-  //todo: comments, but Function.toString() usually strips comments
+  var arrstr = str.split(''); //it's easier to do insertions without worrying about changing order this way
+  var arrstr2 = str.split(''); //remove done blcoks, but retains length
+  
+  
+  function blockArray(levels, index, arrstr){
+    for(var q = levels.length, b = 0; b < q; b++){
+      var lev = levels[b];
+      blockModify(arrstr, arrstr2.join(''), lev[0], lev[1], index - 1);
+      for(var i = lev[0]+1; i < lev[1]; i++){
+        arrstr2[i] = '*';
+      }
+    }
+  }
+
+  //todo: comments, but Function.toString() usually strips comments, but chrome doesnt
   for(var i = 0, l = str.length; i < l; i++){
-    var chr = str.charAt(i);
+    var chr = arrstr2[i];
     if(chr == '"' && !inSgl){
       inDbl = !inDbl;
     }else if(chr == "'" && !inDbl){
@@ -166,7 +173,7 @@ function blockScan(str){
       if(!index) throw "This should never happen";
       var level = blockStack.length;
       if(blockLevels[level+1]){
-        blockArray(blockLevels[level+1], i, arrstr, str);
+        blockArray(blockLevels[level+1], i, arrstr);
         console.log('handling block array ',level)
         blockLevels[level+1] = [];
       }
@@ -175,7 +182,7 @@ function blockScan(str){
     }
   }
   if(blockLevels[0]){
-    blockArray(blockLevels[0], i, arrstr, str);
+    blockArray(blockLevels[0], i, arrstr);
     console.log('handling block array ',0)
     blockLevels[0] = [];
   }
